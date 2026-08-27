@@ -1,6 +1,7 @@
 "use client"
 
 import { useActionState } from "react"
+import Link from "next/link"
 import { Loader2Icon } from "lucide-react"
 
 import { signOutAction } from "@/components/auth/auth-actions"
@@ -46,7 +47,10 @@ export function UserMenuClient({
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <a href="/settings">账户设置</a>
+          <Link href="/settings/profile">个人资料</Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/settings">账户设置</Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <form action={action}>
