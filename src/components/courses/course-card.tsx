@@ -13,7 +13,6 @@ type Course = {
   description: string | null
   color: string | null
   archived: boolean
-  created_at: string
   updated_at: string
 }
 

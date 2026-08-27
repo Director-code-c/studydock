@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { FolderOpenIcon } from "lucide-react"
 
+import { CourseCacheSync } from "@/components/courses/course-cache-sync"
 import { CourseCard } from "@/components/courses/course-card"
 import { CreateCourseDialog } from "@/components/courses/create-course-dialog"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -30,7 +31,7 @@ export default async function CoursesPage() {
 
   const { data: courses, error } = await supabase
     .from("courses")
-    .select("id, name, code, description, color, archived, created_at, updated_at")
+    .select("id, name, code, description, color, archived, updated_at")
     .eq("user_id", userId)
     .order("archived", { ascending: true })
     .order("updated_at", { ascending: false })
@@ -73,6 +74,7 @@ export default async function CoursesPage() {
         <CreateCourseDialog />
       </div>
 
+      <CourseCacheSync userId={userId} courses={courses} />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {courses.map((course) => (
           <CourseCard key={course.id} course={course} />

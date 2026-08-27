@@ -16,6 +16,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "StudyDock",
   description: "课程资料与 Project 管理工作台",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/icon-192.svg",
+    apple: "/icon-192.svg",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

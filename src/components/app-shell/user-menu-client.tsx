@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Loader2Icon } from "lucide-react"
 
 import { signOutAction } from "@/components/auth/auth-actions"
+import { SignOutForm } from "@/components/auth/sign-out-form"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -53,7 +54,7 @@ export function UserMenuClient({
           <Link href="/settings">账户设置</Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <form action={action}>
+        <SignOutForm action={action}>
           <Button
             type="submit"
             variant="ghost"
@@ -64,7 +65,7 @@ export function UserMenuClient({
             {pending ? <Loader2Icon className="size-4 animate-spin" aria-hidden="true" /> : null}
             {pending ? "退出中…" : "退出登录"}
           </Button>
-        </form>
+        </SignOutForm>
       </DropdownMenuContent>
     </DropdownMenu>
   )
