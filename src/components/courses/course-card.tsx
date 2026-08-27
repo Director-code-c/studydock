@@ -1,7 +1,10 @@
 import { ArchiveIcon } from "lucide-react"
 
+import { ArchiveCourseButton } from "@/components/courses/archive-course-button"
+import { DeleteCourseDialog } from "@/components/courses/delete-course-dialog"
+import { EditCourseDialog } from "@/components/courses/edit-course-dialog"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 
 type Course = {
   id: string
@@ -49,6 +52,11 @@ export function CourseCard({ course }: { course: Course }) {
           </p>
         </CardContent>
       ) : null}
+      <CardFooter className="mt-auto flex flex-wrap gap-2 border-t-0 bg-transparent p-4 pt-3">
+        <EditCourseDialog course={course} />
+        <ArchiveCourseButton courseId={course.id} archived={course.archived} />
+        <DeleteCourseDialog courseId={course.id} courseName={course.name} />
+      </CardFooter>
     </Card>
   )
 }
