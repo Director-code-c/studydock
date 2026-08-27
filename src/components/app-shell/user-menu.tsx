@@ -1,46 +1,17 @@
-"use client"
+import { UserMenuClient } from "@/components/app-shell/user-menu-client"
+import { getCurrentProfile } from "@/lib/supabase/auth"
 
-import { SettingsIcon, UserRoundIcon } from "lucide-react"
+export async function UserMenu() {
+  const profile = await getCurrentProfile()
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
+  if (!profile) {
+    return <UserMenuClient displayName="未登录" email="请先登录以使用 StudyDock" />
+  }
 
-export function UserMenu() {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="rounded-full"
-          aria-label="用户菜单"
-        >
-          <span className="flex size-7 items-center justify-center rounded-full bg-muted ring-1 ring-border/60">
-            <UserRoundIcon className="size-4 text-muted-foreground" aria-hidden="true" />
-          </span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuLabel>
-          <span className="block text-sm font-medium text-foreground">本地用户</span>
-          <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
-            尚未登录，数据仅保存在本地演示状态
-          </span>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem disabled>
-          <SettingsIcon aria-hidden="true" />
-          账户设置
-          <span className="ml-auto text-xs text-muted-foreground">即将开放</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <UserMenuClient
+      displayName={profile.display_name ?? profile.email ?? "用户"}
+      email={profile.email ?? ""}
+    />
   )
 }
