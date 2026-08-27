@@ -2,9 +2,11 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## 数据库迁移
 
-- 迁移文件位于 `supabase/migrations/`，按序号命名（如 `0001_create_profiles.sql`）。
-- 当前阶段通过 Supabase Dashboard 的 **SQL Editor** 手动执行迁移：打开项目 → SQL Editor → 粘贴迁移文件内容 → Run。
-- 每个迁移只执行一次：已经成功执行的迁移**不要重复执行**，重复执行可能导致报错或数据异常。
+- 迁移文件位于 `supabase/migrations/`，按编号顺序命名，目前包含：
+  - `0001_create_profiles.sql` — 创建 `public.profiles` 及相关 trigger / RLS。
+  - `0002_create_courses.sql` — 创建 `public.courses` 及索引 / RLS / `updated_at` 触发器。
+- 当前阶段通过 Supabase Dashboard 的 **SQL Editor** 手动执行：按编号顺序逐个粘贴文件内容并 Run。
+- 每个迁移只执行一次：已成功执行的迁移**不要重复执行**，重复执行可能导致报错或数据异常。
 - **不要把数据库密码、service_role key 或其他密钥写入任何 SQL 文件。**
 
 ## Getting Started
