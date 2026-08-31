@@ -1,28 +1,56 @@
 import type { Metadata } from "next"
-import { SettingsIcon } from "lucide-react"
+import Link from "next/link"
+import { BellIcon, ChevronRightIcon, UserRoundIcon } from "lucide-react"
 
-import { EmptyState } from "@/components/shared/empty-state"
-import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
 
 export const metadata: Metadata = {
   title: "设置 | StudyDock",
 }
 
+const upcomingSettings = [
+  {
+    icon: BellIcon,
+    label: "通知",
+    description: "课程更新与提醒规则",
+  },
+]
+
 export default function SettingsPage() {
   return (
-    <div className="mx-auto w-full max-w-5xl">
-      <EmptyState
-        icon={SettingsIcon}
-        title="设置中心即将开放"
-        description="登录功能上线后，你可以在这里管理账户资料、外观偏好（浅色 / 深色 / 跟随系统）以及通知与提醒规则。"
-        action={
-          <Button disabled>
-            <SettingsIcon aria-hidden="true" />
-            编辑个人资料
-            <span className="text-xs font-normal opacity-70">即将开放</span>
-          </Button>
-        }
-      />
+    <div className="mx-auto w-full max-w-2xl space-y-4">
+      <h1 className="text-lg font-semibold tracking-tight">设置</h1>
+
+      <Card className="divide-y divide-border/60">
+        <Link
+          href="/settings/profile"
+          className="flex items-center gap-3 rounded-t-xl px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        >
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 ring-1 ring-brand/25">
+            <UserRoundIcon className="size-4 text-brand" aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium text-foreground">个人资料</span>
+            <span className="block text-xs text-muted-foreground">
+              编辑显示名称与查看登录邮箱
+            </span>
+          </span>
+          <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        </Link>
+
+        {upcomingSettings.map(({ icon: Icon, label, description }) => (
+          <div key={label} className="flex items-center gap-3 px-4 py-3 opacity-60">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted ring-1 ring-border/60">
+              <Icon className="size-4 text-muted-foreground" aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium text-foreground">{label}</span>
+              <span className="block text-xs text-muted-foreground">{description}</span>
+            </span>
+            <span className="shrink-0 text-xs text-muted-foreground">即将开放</span>
+          </div>
+        ))}
+      </Card>
     </div>
   )
 }

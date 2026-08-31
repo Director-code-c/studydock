@@ -36,6 +36,7 @@ export default async function CoursesPage() {
     .order("archived", { ascending: true })
     .order("updated_at", { ascending: false })
 
+  // 查询失败时不覆盖离线缓存，保留最后一次有效 snapshot。
   if (error) {
     return (
       <div className="mx-auto w-full max-w-5xl space-y-4">
@@ -50,22 +51,7 @@ export default async function CoursesPage() {
     )
   }
 
-  if (!courses || courses.length === 0) {
-    return (
-      <div className="mx-auto w-full max-w-5xl space-y-6">
-        <div className="flex items-center justify-between gap-4">
-          <h1 className="text-lg font-semibold tracking-tight">课程</h1>
-          <CreateCourseDialog />
-        </div>
-        <EmptyState
-          icon={FolderOpenIcon}
-          title="还没有课程"
-          description="创建第一门课程，开始整理讲义、课件与参考资料。"
-          action={<CreateCourseDialog />}
-        />
-      </div>
-    )
-  }
+  const courseList = courses ?? []
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6">
@@ -74,12 +60,23 @@ export default async function CoursesPage() {
         <CreateCourseDialog />
       </div>
 
-      <CourseCacheSync userId={userId} courses={courses} />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {courses.map((course) => (
-          <CourseCard key={course.id} course={course} />
-        ))}
-      </div>
+      {/* 查询成功后无论列表是否为空都同步离线 snapshot，确保删除最后一门课后离线端也同步为空。 */}
+      <CourseCacheSync userId={userId} courses={courseList} />
+
+      {courseList.length === 0 ? (
+        <EmptyState
+          icon={FolderOpenIcon}
+          title="还没有课程"
+          description="创建第一门课程，开始整理讲义、课件与参考资料。"
+          action={<CreateCourseDialog />}
+        />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {courseList.map((course) => (
+            <CourseCard key={course.id} course={course} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

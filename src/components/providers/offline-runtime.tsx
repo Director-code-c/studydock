@@ -3,6 +3,25 @@
 import { useEffect } from "react"
 
 import { createClient } from "@/lib/supabase/client"
+import { clearCourseSnapshot } from "@/lib/db/offline-cache"
+
+const OFFLINE_USER_KEY = "studydock-offline-user"
+
+// 第二层隐私兜底：任何 sign-out 路径都会先清除该用户的 IndexedDB 课程 snapshot，
+// 再移除离线用户 marker。清理失败不阻止退出，且对不存在的 snapshot 幂等。
+async function clearOfflineUserData() {
+  const previousUserId = localStorage.getItem(OFFLINE_USER_KEY)
+  if (previousUserId) {
+    await clearCourseSnapshot(previousUserId).catch(() => {
+      console.error("课程离线缓存清理失败。")
+    })
+    // 仅在 marker 仍是本次要清理的用户时移除；若期间已切换登录为新用户，
+    // 保留新 marker，避免误删。
+    if (localStorage.getItem(OFFLINE_USER_KEY) === previousUserId) {
+      localStorage.removeItem(OFFLINE_USER_KEY)
+    }
+  }
+}
 
 export function OfflineRuntime() {
   useEffect(() => {
@@ -21,21 +40,21 @@ export function OfflineRuntime() {
 
       const userId = data.session?.user?.id
       if (userId) {
-        localStorage.setItem("studydock-offline-user", userId)
+        localStorage.setItem(OFFLINE_USER_KEY, userId)
       } else {
-        localStorage.removeItem("studydock-offline-user")
+        await clearOfflineUserData()
       }
     }
 
     void syncUserMarker().catch(() => {
-      if (mounted) localStorage.removeItem("studydock-offline-user")
+      if (mounted) localStorage.removeItem(OFFLINE_USER_KEY)
     })
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT" || !session?.user?.id) {
-        localStorage.removeItem("studydock-offline-user")
+        void clearOfflineUserData()
       } else {
-        localStorage.setItem("studydock-offline-user", session.user.id)
+        localStorage.setItem(OFFLINE_USER_KEY, session.user.id)
       }
     })
 

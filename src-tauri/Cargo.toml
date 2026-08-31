@@ -1,6 +1,6 @@
 [package]
 name = "studydock"
-version = "0.1.0"
+version = "0.2.0"
 description = "StudyDock Windows desktop shell"
 authors = ["Director-code-c"]
 edition = "2021"

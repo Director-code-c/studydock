@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react"
 import { Loader2Icon } from "lucide-react"
 
-import { deleteCourseAction } from "@/components/courses/course-actions"
+import { deleteProjectAction } from "@/components/projects/project-actions"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,14 +14,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 
-function DeleteCourseForm({
-  courseId,
+function DeleteProjectForm({
+  projectId,
   onClose,
 }: {
-  courseId: string
+  projectId: string
   onClose: () => void
 }) {
-  const [state, formAction, pending] = useActionState(deleteCourseAction, {})
+  const [state, formAction, pending] = useActionState(deleteProjectAction, {})
   const prevSuccessRef = useRef(false)
 
   useEffect(() => {
@@ -34,7 +34,7 @@ function DeleteCourseForm({
 
   return (
     <form action={formAction} className="space-y-4" noValidate>
-      <input type="hidden" name="id" value={courseId} />
+      <input type="hidden" name="id" value={projectId} />
 
       {state.message ? (
         <p
@@ -59,7 +59,13 @@ function DeleteCourseForm({
   )
 }
 
-export function DeleteCourseDialog({ courseId, courseName }: { courseId: string; courseName: string }) {
+export function DeleteProjectDialog({
+  projectId,
+  projectName,
+}: {
+  projectId: string
+  projectName: string
+}) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -71,17 +77,13 @@ export function DeleteCourseDialog({ courseId, courseName }: { courseId: string;
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>删除课程</DialogTitle>
+          <DialogTitle>删除 Project</DialogTitle>
           <DialogDescription>
-            确认删除课程「{courseName}」？此操作不可撤销，课程下的相关数据可能一并受影响。
+            确认删除项目「{projectName}」？此操作不可撤销。
           </DialogDescription>
         </DialogHeader>
         {open ? (
-          <DeleteCourseForm
-            key={courseId}
-            courseId={courseId}
-            onClose={() => setOpen(false)}
-          />
+          <DeleteProjectForm projectId={projectId} onClose={() => setOpen(false)} />
         ) : null}
       </DialogContent>
     </Dialog>
