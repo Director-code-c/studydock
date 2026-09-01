@@ -86,15 +86,71 @@ export function ProjectsCard({ projects }: { projects: DashboardProject[] }) {
   )
 }
 
-export function DeadlinesCard() {
+export type DashboardDeadline = {
+  id: string
+  name: string
+  status: ProjectStatus
+  due_date: string
+  course_id: string | null
+  courses: { name: string } | null
+}
+
+function DeadlineDateLabel({ dueDate, today }: { dueDate: string; today: string }) {
+  if (dueDate < today) {
+    return <span className="text-destructive">已逾期 · {dueDate}</span>
+  }
+  if (dueDate === today) {
+    return <span>今天截止</span>
+  }
+  return <span>截止 {dueDate}</span>
+}
+
+export function DeadlinesCard({
+  deadlines,
+  today,
+}: {
+  deadlines: DashboardDeadline[]
+  today: string
+}) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>即将截止</CardTitle>
-        <CardDescription>暂无截止任务</CardDescription>
+        <div>
+          <CardTitle>即将截止</CardTitle>
+          <CardDescription>根据项目截止日期</CardDescription>
+        </div>
+        {deadlines.length > 0 ? (
+          <CardAction>
+            <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs">
+              <Link href="/projects">查看全部项目</Link>
+            </Button>
+          </CardAction>
+        ) : null}
       </CardHeader>
       <CardContent>
-        <p className="py-6 text-center text-sm text-muted-foreground">暂无截止任务</p>
+        {deadlines.length === 0 ? (
+          <div className="py-4 text-center">
+            <p className="text-sm text-muted-foreground">暂无截止任务</p>
+            <p className="mt-1 text-xs text-muted-foreground">没有即将需要处理的项目</p>
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {deadlines.map((deadline) => (
+              <li key={deadline.id} className="flex flex-col gap-1">
+                <span className="min-w-0 truncate text-sm font-medium">{deadline.name}</span>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                  {deadline.courses?.name ? (
+                    <span className="inline-flex min-w-0 items-center gap-1">
+                      <BookOpenIcon className="size-3 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{deadline.courses.name}</span>
+                    </span>
+                  ) : null}
+                  <DeadlineDateLabel dueDate={deadline.due_date} today={today} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </CardContent>
     </Card>
   )

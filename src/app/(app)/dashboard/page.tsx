@@ -5,7 +5,10 @@ import { FolderOpenIcon } from "lucide-react"
 import { ActivityCard, RecentFilesCard } from "@/components/dashboard/activity-cards"
 import { CourseGrid } from "@/components/dashboard/course-grid"
 import { DeadlinesCard, ProjectsCard } from "@/components/dashboard/overview-cards"
-import type { DashboardProject } from "@/components/dashboard/overview-cards"
+import type {
+  DashboardDeadline,
+  DashboardProject,
+} from "@/components/dashboard/overview-cards"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,6 +20,7 @@ export const metadata: Metadata = {
 
 const COURSES_DISPLAY_LIMIT = 6
 const PROJECTS_DISPLAY_LIMIT = 4
+const DEADLINES_DISPLAY_LIMIT = 4
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -36,7 +40,10 @@ export default async function DashboardPage() {
 
   const userId = claimsData.claims.sub as string
 
-  const [coursesResult, projectsResult] = await Promise.all([
+  // 服务器统一按 UTC 日期计算“今天”，避免客户端时区差异。
+  const today = new Date().toISOString().slice(0, 10)
+
+  const [coursesResult, projectsResult, deadlinesResult] = await Promise.all([
     supabase
       .from("courses")
       .select("id, name, code, description, color, archived, updated_at")
@@ -49,11 +56,22 @@ export default async function DashboardPage() {
       .eq("user_id", userId)
       .order("updated_at", { ascending: false })
       .limit(PROJECTS_DISPLAY_LIMIT),
+    supabase
+      .from("projects")
+      .select("id, name, status, due_date, course_id, courses(name)")
+      .eq("user_id", userId)
+      .neq("status", "completed")
+      .not("due_date", "is", null)
+      .order("due_date", { ascending: true })
+      .limit(DEADLINES_DISPLAY_LIMIT),
   ])
 
-  if (coursesResult.error || projectsResult.error) {
+  if (coursesResult.error || projectsResult.error || deadlinesResult.error) {
     console.error("Dashboard query failed", {
-      code: coursesResult.error?.code ?? projectsResult.error?.code,
+      code:
+        coursesResult.error?.code ??
+        projectsResult.error?.code ??
+        deadlinesResult.error?.code,
     })
     return (
       <div className="mx-auto w-full max-w-6xl">
@@ -75,6 +93,7 @@ export default async function DashboardPage() {
   const courseList = coursesResult.data ?? []
   const displayedCourses = courseList.slice(0, COURSES_DISPLAY_LIMIT)
   const dashboardProjects = (projectsResult.data ?? []) as unknown as DashboardProject[]
+  const dashboardDeadlines = (deadlinesResult.data ?? []) as unknown as DashboardDeadline[]
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-5">
@@ -82,7 +101,7 @@ export default async function DashboardPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <ProjectsCard projects={dashboardProjects} />
-        <DeadlinesCard />
+        <DeadlinesCard deadlines={dashboardDeadlines} today={today} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
