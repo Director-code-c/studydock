@@ -7,6 +7,9 @@ import {
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
+import { UploadFileDialog } from "@/components/files/upload-file-dialog"
+import type { FileUploadOption } from "@/components/files/upload-file-dialog"
+import { formatFileSize } from "@/lib/files/validation"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -26,23 +29,6 @@ export type FileListItem = {
   project_id: string | null
   courses: { name: string } | null
   projects: { name: string } | null
-}
-
-// size_bytes 在 PostgREST JSON 中通常为 number；兼容 string 以防推断差异。
-export function formatFileSize(bytes: number | string): string {
-  const value = typeof bytes === "string" ? Number(bytes) : bytes
-  if (!Number.isFinite(value) || value <= 0) return "0 B"
-  if (value < 1024) return `${Math.round(value)} B`
-  const units = ["KB", "MB", "GB"]
-  let size = value
-  let unit = -1
-  while (size >= 1024 && unit < units.length - 1) {
-    size /= 1024
-    unit += 1
-  }
-  const formatted =
-    size >= 100 || Number.isInteger(size) ? size.toFixed(0) : size.toFixed(1)
-  return `${formatted} ${units[unit]}`
 }
 
 function getFileExtension(name: string): string {
@@ -106,7 +92,15 @@ export function FileList({ files }: { files: FileListItem[] }) {
   )
 }
 
-export function FilesSection({ files }: { files: FileListItem[] }) {
+export function FilesSection({
+  files,
+  courseOptions,
+  projectOptions,
+}: {
+  files: FileListItem[]
+  courseOptions: FileUploadOption[]
+  projectOptions: FileUploadOption[]
+}) {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-4">
@@ -114,6 +108,9 @@ export function FilesSection({ files }: { files: FileListItem[] }) {
           <h1 className="text-lg font-semibold tracking-tight">文件</h1>
           <p className="text-sm text-muted-foreground">管理学习资料、课程文档和项目文件。</p>
         </div>
+        {files.length > 0 ? (
+          <UploadFileDialog courseOptions={courseOptions} projectOptions={projectOptions} />
+        ) : null}
       </div>
       {files.length === 0 ? (
         <Card>
@@ -121,6 +118,9 @@ export function FilesSection({ files }: { files: FileListItem[] }) {
             <CardTitle>还没有文件</CardTitle>
             <CardDescription>上传学习资料、课程文档和项目文件。</CardDescription>
           </CardHeader>
+          <CardContent>
+            <UploadFileDialog courseOptions={courseOptions} projectOptions={projectOptions} />
+          </CardContent>
         </Card>
       ) : (
         <FileList files={files} />
