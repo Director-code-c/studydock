@@ -5,6 +5,7 @@ import { FolderOpenIcon } from "lucide-react"
 import { ActivityCard, RecentFilesCard } from "@/components/dashboard/activity-cards"
 import { CourseGrid } from "@/components/dashboard/course-grid"
 import { DeadlinesCard, ProjectsCard } from "@/components/dashboard/overview-cards"
+import type { DashboardProject } from "@/components/dashboard/overview-cards"
 import { EmptyState } from "@/components/shared/empty-state"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
 }
 
 const COURSES_DISPLAY_LIMIT = 6
+const PROJECTS_DISPLAY_LIMIT = 4
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -34,21 +36,31 @@ export default async function DashboardPage() {
 
   const userId = claimsData.claims.sub as string
 
-  const { data: courses, error } = await supabase
-    .from("courses")
-    .select("id, name, code, description, color, archived, updated_at")
-    .eq("user_id", userId)
-    .order("archived", { ascending: true })
-    .order("updated_at", { ascending: false })
+  const [coursesResult, projectsResult] = await Promise.all([
+    supabase
+      .from("courses")
+      .select("id, name, code, description, color, archived, updated_at")
+      .eq("user_id", userId)
+      .order("archived", { ascending: true })
+      .order("updated_at", { ascending: false }),
+    supabase
+      .from("projects")
+      .select("id, name, status, due_date, course_id, updated_at, courses(name)")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(PROJECTS_DISPLAY_LIMIT),
+  ])
 
-  if (error) {
-    console.error("Dashboard courses query failed", { code: error.code })
+  if (coursesResult.error || projectsResult.error) {
+    console.error("Dashboard query failed", {
+      code: coursesResult.error?.code ?? projectsResult.error?.code,
+    })
     return (
       <div className="mx-auto w-full max-w-6xl">
         <Card>
           <CardHeader>
             <CardTitle>加载工作台失败</CardTitle>
-            <CardDescription>暂时无法获取你的课程数据，请稍后再试。</CardDescription>
+            <CardDescription>加载 Dashboard 数据失败，请稍后再试。</CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline" size="sm">
@@ -60,15 +72,16 @@ export default async function DashboardPage() {
     )
   }
 
-  const courseList = courses ?? []
+  const courseList = coursesResult.data ?? []
   const displayedCourses = courseList.slice(0, COURSES_DISPLAY_LIMIT)
+  const dashboardProjects = (projectsResult.data ?? []) as unknown as DashboardProject[]
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-5">
       <CourseGrid courses={displayedCourses} totalCount={courseList.length} />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <ProjectsCard />
+        <ProjectsCard projects={dashboardProjects} />
         <DeadlinesCard />
       </div>
 
