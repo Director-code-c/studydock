@@ -42,6 +42,7 @@ export default async function FilesPage() {
         "id, original_name, mime_type, size_bytes, created_at, course_id, project_id, courses(name), projects(name)"
       )
       .eq("user_id", userId)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false }),
     supabase
       .from("courses")

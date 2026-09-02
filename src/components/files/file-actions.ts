@@ -363,7 +363,7 @@ export type DownloadFileResult =
   | { success: true; signedUrl: string }
   | { success: false; message: string }
 
-export type DeleteFileResult =
+export type TrashActionResult =
   | { success: true; idempotent?: boolean }
   | { success: false; message: string }
 
@@ -396,6 +396,7 @@ export async function getFileDownloadUrl(input: {
     .select("id, storage_path, original_name")
     .eq("id", parsed.data.fileId)
     .eq("user_id", userId)
+    .is("deleted_at", null)
     .maybeSingle()
 
   if (error) {
@@ -422,19 +423,56 @@ export async function getFileDownloadUrl(input: {
   return { success: true, signedUrl: signResult.data.signedUrl }
 }
 
-// 删除：Storage first → DB second。幂等：metadata 不存在统一返回 success。
-export async function deleteFileAction(input: {
+// 移到回收站：仅 metadata 状态变更，不动 Storage。幂等：已回收/不存在/他人 → success。
+export async function moveFileToTrashAction(input: {
   fileId: string
-}): Promise<DeleteFileResult> {
+}): Promise<TrashActionResult> {
   const parsed = fileIdSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, message: "删除失败，请稍后再试。" }
+    return { success: false, message: "移到回收站失败，请稍后再试。" }
   }
 
   const supabase = await createClient()
   const userId = await getAuthenticatedUserId(supabase)
   if (!userId) {
-    return { success: false, message: "删除失败，请稍后再试。" }
+    return { success: false, message: "移到回收站失败，请稍后再试。" }
+  }
+
+  const updateResult = await supabase
+    .from("files")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", parsed.data.fileId)
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .select("id")
+
+  if (updateResult.error) {
+    console.error("files_trash_move", { code: updateResult.error.code })
+    return { success: false, message: "移到回收站失败，请稍后再试。" }
+  }
+
+  // 0 rows + no error：已回收 / 缺失 / 他人文件 / 并发双击 → 统一 success。
+  revalidatePath("/files")
+  revalidatePath("/trash")
+  revalidatePath("/dashboard")
+  revalidatePath("/search")
+
+  return { success: true }
+}
+
+// 恢复：先查回收站 metadata，再验证 Storage 对象存在，最后清 deleted_at。不动 Storage。
+export async function restoreFileAction(input: {
+  fileId: string
+}): Promise<TrashActionResult> {
+  const parsed = fileIdSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, message: "恢复失败，请稍后再试。" }
+  }
+
+  const supabase = await createClient()
+  const userId = await getAuthenticatedUserId(supabase)
+  if (!userId) {
+    return { success: false, message: "恢复失败，请稍后再试。" }
   }
 
   const { data: file, error: lookupError } = await supabase
@@ -442,14 +480,78 @@ export async function deleteFileAction(input: {
     .select("id, storage_path")
     .eq("id", parsed.data.fileId)
     .eq("user_id", userId)
+    .not("deleted_at", "is", null)
     .maybeSingle()
 
   if (lookupError) {
-    console.error("files_delete_lookup", { code: lookupError.code })
-    return { success: false, message: "删除失败，请稍后再试。" }
+    console.error("files_trash_restore_lookup", { code: lookupError.code })
+    return { success: false, message: "恢复失败，请稍后再试。" }
   }
 
-  // 已删除或不属于当前用户：统一 success，不泄露存在性。
+  // 已恢复 / 缺失 / 他人文件 → 统一 success，不泄露存在性。
+  if (!file) {
+    return { success: true, idempotent: true }
+  }
+
+  const infoResult = await supabase.storage.from("studydock-files").info(file.storage_path)
+
+  if (infoResult.error || !infoResult.data) {
+    // 明确 not found 或 transient 一律不恢复，避免恢复出损坏的 active 行。
+    console.error("files_trash_restore_info", { code: errorCode(infoResult.error) })
+    return { success: false, message: "恢复失败，请稍后再试。" }
+  }
+
+  const updateResult = await supabase
+    .from("files")
+    .update({ deleted_at: null })
+    .eq("id", parsed.data.fileId)
+    .eq("user_id", userId)
+    .not("deleted_at", "is", null)
+    .select("id")
+
+  if (updateResult.error) {
+    console.error("files_trash_restore_update", { code: updateResult.error.code })
+    return { success: false, message: "恢复失败，请稍后再试。" }
+  }
+
+  revalidatePath("/files")
+  revalidatePath("/trash")
+  revalidatePath("/dashboard")
+  revalidatePath("/search")
+
+  return { success: true }
+}
+
+// 永久删除：Storage first → DB second。初始 lookup 必须已在回收站；
+// 一旦开始，PERMANENT DELETE WINS（final DB delete 只按 id + user_id）。
+export async function permanentlyDeleteFileAction(input: {
+  fileId: string
+}): Promise<TrashActionResult> {
+  const parsed = fileIdSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, message: "永久删除失败，请稍后再试。" }
+  }
+
+  const supabase = await createClient()
+  const userId = await getAuthenticatedUserId(supabase)
+  if (!userId) {
+    return { success: false, message: "永久删除失败，请稍后再试。" }
+  }
+
+  const { data: file, error: lookupError } = await supabase
+    .from("files")
+    .select("id, storage_path")
+    .eq("id", parsed.data.fileId)
+    .eq("user_id", userId)
+    .not("deleted_at", "is", null)
+    .maybeSingle()
+
+  if (lookupError) {
+    console.error("files_trash_permanent_lookup", { code: lookupError.code })
+    return { success: false, message: "永久删除失败，请稍后再试。" }
+  }
+
+  // active / 缺失 / 他人文件：不做任何操作。active 对象必须存活。
   if (!file) {
     return { success: true, idempotent: true }
   }
@@ -457,11 +559,13 @@ export async function deleteFileAction(input: {
   const removeResult = await supabase.storage.from("studydock-files").remove([file.storage_path])
 
   if (removeResult.error) {
-    console.error("files_delete_storage", { code: errorCode(removeResult.error) })
-    return { success: false, message: "删除失败，请稍后再试。" }
+    // Storage transient/RLS 失败：保留 metadata（仍在回收站），可重试。
+    console.error("files_trash_permanent_storage", { code: errorCode(removeResult.error) })
+    return { success: false, message: "永久删除失败，请稍后再试。" }
   }
 
-  // remove 无 error（即使对象本就不存在 / data 为空）→ 继续清理 metadata。
+  // 关键：final DB delete 不加 deleted_at filter——并发 Restore 可能已清空该列。
+  // 初始 lookup 已证明该行原在回收站；永久删除开始后即胜出。
   const deleteResult = await supabase
     .from("files")
     .delete()
@@ -470,13 +574,16 @@ export async function deleteFileAction(input: {
     .select("id")
 
   if (deleteResult.error) {
-    // metadata 保留，retry 收敛：remove 对缺失对象为 no-op success → 再次 delete。
-    console.error("files_delete_metadata", { code: deleteResult.error.code })
-    return { success: false, message: "删除失败，请稍后再试。" }
+    // metadata 可能仍在回收站；retry 收敛（remove 对缺失对象为 no-op success）。
+    console.error("files_trash_permanent_metadata", { code: deleteResult.error.code })
+    return { success: false, message: "永久删除失败，请稍后再试。" }
   }
 
-  // 0 rows + no error（并发 double delete）同样视为 success。
+  // 0 rows + no error（并发永久删除）→ success。
   revalidatePath("/files")
+  revalidatePath("/trash")
+  revalidatePath("/dashboard")
+  revalidatePath("/search")
 
   return { success: true }
 }

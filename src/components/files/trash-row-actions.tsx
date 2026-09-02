@@ -2,9 +2,12 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { DownloadIcon, Loader2Icon, Trash2Icon } from "lucide-react"
+import { Loader2Icon, RotateCcwIcon, Trash2Icon } from "lucide-react"
 
-import { getFileDownloadUrl, moveFileToTrashAction } from "@/components/files/file-actions"
+import {
+  permanentlyDeleteFileAction,
+  restoreFileAction,
+} from "@/components/files/file-actions"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,7 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
-function MoveToTrashContent({
+function PermanentDeleteContent({
   fileId,
   originalName,
   onClose,
@@ -27,13 +30,13 @@ function MoveToTrashContent({
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function handleMove() {
+  async function handleDelete() {
     if (pending) return
     setPending(true)
     setError(null)
 
     try {
-      const result = await moveFileToTrashAction({ fileId })
+      const result = await permanentlyDeleteFileAction({ fileId })
 
       if (!result.success) {
         setError(result.message)
@@ -43,7 +46,7 @@ function MoveToTrashContent({
       onClose()
       router.refresh()
     } catch {
-      setError("移到回收站失败，请稍后再试。")
+      setError("永久删除失败，请稍后再试。")
     } finally {
       setPending(false)
     }
@@ -63,51 +66,45 @@ function MoveToTrashContent({
         <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
           取消
         </Button>
-        <Button type="button" variant="destructive" onClick={handleMove} disabled={pending}>
+        <Button type="button" variant="destructive" onClick={handleDelete} disabled={pending}>
           {pending ? <Loader2Icon className="size-4 animate-spin" aria-hidden="true" /> : null}
-          {pending ? "移到回收站中…" : "移到回收站"}
+          {pending ? "永久删除中…" : "永久删除"}
         </Button>
       </div>
     </div>
   )
 }
 
-export function FileRowActions({
+export function TrashRowActions({
   fileId,
   originalName,
 }: {
   fileId: string
   originalName: string
 }) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [downloadPending, setDownloadPending] = useState(false)
-  const [downloadError, setDownloadError] = useState<string | null>(null)
+  const [restorePending, setRestorePending] = useState(false)
+  const [restoreError, setRestoreError] = useState<string | null>(null)
 
-  async function handleDownload() {
-    if (downloadPending) return
-    setDownloadPending(true)
-    setDownloadError(null)
+  async function handleRestore() {
+    if (restorePending) return
+    setRestorePending(true)
+    setRestoreError(null)
 
     try {
-      const result = await getFileDownloadUrl({ fileId })
+      const result = await restoreFileAction({ fileId })
 
       if (!result.success) {
-        setDownloadError(result.message)
+        setRestoreError(result.message)
         return
       }
 
-      // 触发下载；attachment filename 由 signed URL 的 Content-Disposition 负责。
-      const anchor = document.createElement("a")
-      anchor.href = result.signedUrl
-      anchor.rel = "noopener"
-      anchor.style.display = "none"
-      document.body.appendChild(anchor)
-      anchor.click()
-      anchor.remove()
+      router.refresh()
     } catch {
-      setDownloadError("下载失败，请稍后再试。")
+      setRestoreError("恢复失败，请稍后再试。")
     } finally {
-      setDownloadPending(false)
+      setRestorePending(false)
     }
   }
 
@@ -118,37 +115,37 @@ export function FileRowActions({
           type="button"
           variant="outline"
           size="sm"
-          onClick={handleDownload}
-          disabled={downloadPending}
+          onClick={handleRestore}
+          disabled={restorePending}
         >
-          {downloadPending ? (
+          {restorePending ? (
             <Loader2Icon className="size-3.5 animate-spin" aria-hidden="true" />
           ) : (
-            <DownloadIcon aria-hidden="true" />
+            <RotateCcwIcon aria-hidden="true" />
           )}
-          {downloadPending ? "下载中…" : "下载"}
+          {restorePending ? "恢复中…" : "恢复"}
         </Button>
 
         <Button type="button" variant="destructive" size="sm" onClick={() => setOpen(true)}>
           <Trash2Icon aria-hidden="true" />
-          移到回收站
+          永久删除
         </Button>
       </div>
 
-      {downloadError ? (
+      {restoreError ? (
         <p className="text-xs text-destructive" role="alert" aria-live="polite">
-          {downloadError}
+          {restoreError}
         </p>
       ) : null}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>移到回收站</DialogTitle>
-            <DialogDescription>移到回收站后可以恢复，文件仍会占用存储空间。</DialogDescription>
+            <DialogTitle>永久删除文件</DialogTitle>
+            <DialogDescription>永久删除后无法恢复。</DialogDescription>
           </DialogHeader>
           {open ? (
-            <MoveToTrashContent
+            <PermanentDeleteContent
               fileId={fileId}
               originalName={originalName}
               onClose={() => setOpen(false)}

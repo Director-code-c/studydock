@@ -127,6 +127,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         "id, original_name, size_bytes, created_at, course_id, project_id, courses(name), projects(name)"
       )
       .eq("user_id", userId)
+      .is("deleted_at", null)
       .ilike("original_name", pattern)
       .order("created_at", { ascending: false })
       .limit(SEARCH_RESULT_LIMIT),

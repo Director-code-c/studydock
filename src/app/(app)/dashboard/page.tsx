@@ -72,6 +72,7 @@ export default async function DashboardPage() {
         "id, original_name, size_bytes, created_at, course_id, project_id, courses(name), projects(name)"
       )
       .eq("user_id", userId)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(FILES_DISPLAY_LIMIT),
   ])
