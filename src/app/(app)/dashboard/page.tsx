@@ -3,6 +3,7 @@ import Link from "next/link"
 import { FolderOpenIcon } from "lucide-react"
 
 import { ActivityCard, RecentFilesCard } from "@/components/dashboard/activity-cards"
+import type { DashboardRecentFile } from "@/components/dashboard/activity-cards"
 import { CourseGrid } from "@/components/dashboard/course-grid"
 import { DeadlinesCard, ProjectsCard } from "@/components/dashboard/overview-cards"
 import type {
@@ -21,6 +22,7 @@ export const metadata: Metadata = {
 const COURSES_DISPLAY_LIMIT = 6
 const PROJECTS_DISPLAY_LIMIT = 4
 const DEADLINES_DISPLAY_LIMIT = 4
+const FILES_DISPLAY_LIMIT = 4
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -43,7 +45,7 @@ export default async function DashboardPage() {
   // 服务器统一按 UTC 日期计算“今天”，避免客户端时区差异。
   const today = new Date().toISOString().slice(0, 10)
 
-  const [coursesResult, projectsResult, deadlinesResult] = await Promise.all([
+  const [coursesResult, projectsResult, deadlinesResult, filesResult] = await Promise.all([
     supabase
       .from("courses")
       .select("id, name, code, description, color, archived, updated_at")
@@ -64,14 +66,28 @@ export default async function DashboardPage() {
       .not("due_date", "is", null)
       .order("due_date", { ascending: true })
       .limit(DEADLINES_DISPLAY_LIMIT),
+    supabase
+      .from("files")
+      .select(
+        "id, original_name, size_bytes, created_at, course_id, project_id, courses(name), projects(name)"
+      )
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(FILES_DISPLAY_LIMIT),
   ])
 
-  if (coursesResult.error || projectsResult.error || deadlinesResult.error) {
+  if (
+    coursesResult.error ||
+    projectsResult.error ||
+    deadlinesResult.error ||
+    filesResult.error
+  ) {
     console.error("Dashboard query failed", {
       code:
         coursesResult.error?.code ??
         projectsResult.error?.code ??
-        deadlinesResult.error?.code,
+        deadlinesResult.error?.code ??
+        filesResult.error?.code,
     })
     return (
       <div className="mx-auto w-full max-w-6xl">
@@ -94,6 +110,7 @@ export default async function DashboardPage() {
   const displayedCourses = courseList.slice(0, COURSES_DISPLAY_LIMIT)
   const dashboardProjects = (projectsResult.data ?? []) as unknown as DashboardProject[]
   const dashboardDeadlines = (deadlinesResult.data ?? []) as unknown as DashboardDeadline[]
+  const dashboardFiles = (filesResult.data ?? []) as unknown as DashboardRecentFile[]
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-5">
@@ -105,7 +122,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <RecentFilesCard />
+        <RecentFilesCard files={dashboardFiles} />
         <ActivityCard />
       </div>
     </div>
