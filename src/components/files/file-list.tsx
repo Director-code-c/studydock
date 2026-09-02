@@ -9,6 +9,7 @@ import type { LucideIcon } from "lucide-react"
 
 import { UploadFileDialog } from "@/components/files/upload-file-dialog"
 import type { FileUploadOption } from "@/components/files/upload-file-dialog"
+import { FileRowActions } from "@/components/files/file-row-actions"
 import { formatFileSize } from "@/lib/files/validation"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -84,6 +85,7 @@ export function FileList({ files }: { files: FileListItem[] }) {
                   {file.projects.name}
                 </Badge>
               ) : null}
+              <FileRowActions fileId={file.id} originalName={file.original_name} />
             </CardContent>
           </Card>
         </li>
